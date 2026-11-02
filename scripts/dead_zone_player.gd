@@ -345,7 +345,7 @@ func _shoot() -> void:
 		var collider: Object = hit["collider"]
 		if collider is Bombie:
 			var b := collider as Bombie
-			var headshot: bool = (hit["position"] as Vector3).y > b.global_position.y + 1.45
+			var headshot: bool = (hit["position"] as Vector3).y > b.global_position.y + 1.32
 			b.take_damage(weapon_damage * (2.0 if headshot else 1.0), headshot)
 			if sfx != null:
 				sfx.play("hit", -8.0)

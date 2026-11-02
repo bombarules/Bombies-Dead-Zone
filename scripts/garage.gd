@@ -164,6 +164,36 @@ func _build_pillars(mat: Material) -> void:
 			if absf(x) < 2.0 and absf(z - 12.0) < 2.0:
 				continue # keep the player spawn clear
 			_add_box(Vector3(1.1, WALL_H, 1.1), Vector3(x, WALL_H / 2.0, z), mat)
+			# yellow-black hazard band around the base of every pillar
+			_add_mesh(_hazard_band_mesh(), Vector3(x, 0.75, z), _hazard_mat())
+
+var _hazard: ShaderMaterial
+var _hazard_box: BoxMesh
+
+func _hazard_band_mesh() -> BoxMesh:
+	if _hazard_box == null:
+		_hazard_box = BoxMesh.new()
+		_hazard_box.size = Vector3(1.14, 1.5, 1.14)
+	return _hazard_box
+
+func _hazard_mat() -> ShaderMaterial:
+	if _hazard == null:
+		var sh := Shader.new()
+		sh.code = """
+shader_type spatial;
+varying vec3 wp;
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float s = step(0.5, fract((wp.y + wp.x + wp.z) * 1.6));
+	vec3 col = mix(vec3(0.03), vec3(0.75, 0.6, 0.05), s);
+	float grime = fract(sin(dot(floor(wp * 9.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+	ALBEDO = col * (0.6 + 0.4 * grime);
+	ROUGHNESS = 0.7;
+}
+"""
+		_hazard = ShaderMaterial.new()
+		_hazard.shader = sh
+	return _hazard
 
 func _build_cars(rust: Material) -> void:
 	var spots: Array = [
@@ -225,8 +255,8 @@ func _build_water() -> void:
 	shader.code = """
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_disabled, specular_schlick_ggx;
-uniform vec4 shallow_color : source_color = vec4(0.16, 0.20, 0.14, 0.72);
-uniform vec4 deep_color : source_color = vec4(0.05, 0.08, 0.06, 0.85);
+uniform vec4 shallow_color : source_color = vec4(0.12, 0.19, 0.10, 0.78);
+uniform vec4 deep_color : source_color = vec4(0.03, 0.06, 0.04, 0.9);
 uniform float ripple_speed = 0.6;
 varying vec2 wuv;
 void vertex() {
@@ -239,8 +269,8 @@ void fragment() {
 	float mixv = clamp(0.5 + 0.25 * r + 0.25 * g, 0.0, 1.0);
 	ALBEDO = mix(deep_color.rgb, shallow_color.rgb, mixv);
 	ALPHA = mix(deep_color.a, shallow_color.a, mixv);
-	ROUGHNESS = 0.08;
-	METALLIC = 0.35;
+	ROUGHNESS = 0.04;
+	METALLIC = 0.5;
 	SPECULAR = 0.9;
 }
 """
@@ -282,9 +312,10 @@ func _tube_light(pos: Vector3, color: Color, energy: float) -> OmniLight3D:
 
 func _build_lights() -> void:
 	_tube_light(Vector3(-8, 4.4, -6), Color(1.0, 0.62, 0.25), 2.6)
-	_tube_light(Vector3(10, 4.4, 6), Color(1.0, 0.62, 0.25), 2.0)
+	_tube_light(Vector3(10, 4.4, 6), Color(0.78, 0.9, 1.0), 2.2)   # cold fluorescent
 	_tube_light(Vector3(0, 4.4, 13), Color(1.0, 0.55, 0.2), 1.5)
 	_flicker_light = _tube_light(Vector3(-16, 4.4, 12), Color(1.0, 0.12, 0.08), _flicker_base)
+	_emergency_lamp(Vector3(8, 4.2, -14))
 	# Cold spill from the stairwell.
 	var spill := OmniLight3D.new()
 	spill.position = Vector3(18, 3.5, -15)
@@ -292,6 +323,23 @@ func _build_lights() -> void:
 	spill.light_energy = 1.0
 	spill.omni_range = 12.0
 	add_child(spill)
+
+# Caged red emergency lamp (squad cinematic): a glowing box plus a red light.
+func _emergency_lamp(pos: Vector3) -> void:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(1.0, 0.1, 0.06)
+	m.emission_enabled = true
+	m.emission = Color(1.0, 0.1, 0.06)
+	m.emission_energy_multiplier = 5.0
+	var b := BoxMesh.new()
+	b.size = Vector3(0.6, 0.4, 0.25)
+	_add_mesh(b, pos, m)
+	var l := OmniLight3D.new()
+	l.position = pos + Vector3(0, -0.4, 0.4)
+	l.light_color = Color(1.0, 0.12, 0.08)
+	l.light_energy = 2.2
+	l.omni_range = 10.0
+	add_child(l)
 
 func _build_exit() -> void:
 	# Stairwell door + EXIT sign on the north-east wall.

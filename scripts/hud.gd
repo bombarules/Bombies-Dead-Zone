@@ -13,6 +13,8 @@ var _msg_label: Label
 var _msg_timer: float = 0.0
 var _vignette: ColorRect
 var _overlay: Panel
+var _art: TextureRect
+var _art_tween: Tween
 var _overlay_title: Label
 var _overlay_sub: Label
 var _crosshair: Control
@@ -74,6 +76,13 @@ func _build() -> void:
 	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_vignette)
 	# --- Win / lose overlay ---
+	# Full-screen concept art (assets/concept/) behind the intro and end cards.
+	_art = TextureRect.new()
+	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_art.modulate = Color(1, 1, 1, 0)
+	add_child(_art)
 	_overlay = Panel.new()
 	_overlay.visible = false
 	var style := StyleBoxFlat.new()
@@ -115,6 +124,8 @@ func _layout() -> void:
 	_msg_label.position = Vector2((w - _msg_label.size.x) * 0.5, _vp.y * (0.25 if touch_mode else 0.88))
 	_vignette.position = Vector2.ZERO
 	_vignette.size = _vp
+	_art.position = Vector2.ZERO
+	_art.size = _vp
 	_overlay.size = Vector2(600, 260)
 	_overlay.position = (_vp - _overlay.size) * 0.5
 	set_hp_fill()
@@ -172,7 +183,8 @@ func damage_flash() -> void:
 func show_win() -> void:
 	_overlay_title.text = "DEAD ZONE CLEARED"
 	_overlay_title.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4))
-	_overlay_sub.text = "Round 3 survived. The exit stairwell is open — the garage is yours.\n%s" % _restart_hint("run it back")
+	_overlay_sub.text = "Round 3 survived. The exit stairwell is open.\nNext: the collapsed factory — doors seal behind you.\n%s" % _restart_hint("run it back")
+	show_art("res://assets/ui/corridor_push.jpg", 0.85)
 	_overlay.visible = true
 	_crosshair.visible = false
 
@@ -180,8 +192,23 @@ func show_lose() -> void:
 	_overlay_title.text = "SQUAD DOWN"
 	_overlay_title.add_theme_color_override("font_color", Color(1.0, 0.25, 0.2))
 	_overlay_sub.text = "The hazmat engineer is down and the horde keeps coming.\n%s" % _restart_hint("try again")
+	show_art("res://assets/ui/squad_barricade.jpg", 0.8)
 	_overlay.visible = true
 	_crosshair.visible = false
+
+
+# Shows a concept board picture full-screen. hold < 0 keeps it up.
+func show_art(path: String, alpha: float, hold: float = -1.0) -> void:
+	if not ResourceLoader.exists(path):
+		return
+	_art.texture = load(path)
+	if _art_tween != null and _art_tween.is_valid():
+		_art_tween.kill()
+	_art_tween = create_tween()
+	_art_tween.tween_property(_art, "modulate:a", alpha, 0.6)
+	if hold >= 0.0:
+		_art_tween.tween_interval(hold)
+		_art_tween.tween_property(_art, "modulate:a", 0.0, 1.2)
 
 func _restart_hint(what: String) -> String:
 	return ("TAP ANYWHERE to %s." if touch_mode else "Press R to %s.") % what

@@ -47,6 +47,20 @@ func _ready() -> void:
 	call_deferred("_init_hud")
 	intermission_timer = 3.0
 	state = "intermission"
+	# Intro cinematic + title over the key art; the world waits until deploy.
+	# Added deferred so it sits after the touch layer and gets taps first.
+	if not _selftest:
+		state = "title"
+		get_tree().paused = true
+		var title := TitleScreen.new()
+		title.deployed.connect(_on_deployed)
+		get_parent().add_child.call_deferred(title)
+
+func _on_deployed() -> void:
+	get_tree().paused = false
+	state = "intermission"
+	intermission_timer = 3.0
+	hud.show_message("BOMBIES: DEAD ZONE — hold the flooded garage", 4.0)
 
 func _setup_touch() -> void:
 	# Phones: on-screen controls + a cheaper shadow setup.
@@ -80,6 +94,8 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	if _selftest:
 		_selftest_tick(delta)
+	if state == "title":
+		return
 	if state == "won" or state == "lost":
 		if _selftest:
 			_capture("dz-shot-win.png" if state == "won" else "dz-shot-lose.png")
@@ -107,8 +123,9 @@ func _process(delta: float) -> void:
 	if not spawn_queue.is_empty() and spawn_timer <= 0.0:
 		spawn_timer = _spawn_interval()
 		_spawn_next()
-	# Mid-round mutation: after 40 seconds the survivors change.
-	if not mutated_this_round and round_time >= 40.0:
+	# Mid-round mutation, driven by time (not kills): it comes sooner every
+	# round, and once a round has mutated, new arrivals spawn mutated too.
+	if not mutated_this_round and round_time >= _mutation_time():
 		mutated_this_round = true
 		var count := 0
 		for b in get_tree().get_nodes_in_group("bombie"):
@@ -130,8 +147,14 @@ func alive_count() -> int:
 			n += 1
 	return n
 
+# Density scales with time elapsed in the round, not kills: the longer you
+# hold, the faster they come.
 func _spawn_interval() -> float:
-	return maxf(0.55, 1.3 - 0.2 * float(round_num))
+	var base := 1.3 - 0.2 * float(round_num)
+	return maxf(0.4, base - 0.012 * round_time)
+
+func _mutation_time() -> float:
+	return [40.0, 30.0, 22.0][clampi(round_num - 1, 0, 2)]
 
 func _round_composition(n: int) -> Array[String]:
 	var comp: Array[String] = []
@@ -174,6 +197,8 @@ func _spawn_next() -> void:
 	b.global_position = garage.random_spawn_point(player.global_position, 9.0)
 	b.setup(type, round_num, player)
 	b.died.connect(_on_bombie_died)
+	if mutated_this_round:
+		b.mutate()
 
 func _on_bombie_died(_b: Bombie) -> void:
 	pass # counts are derived live from the group

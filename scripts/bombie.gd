@@ -65,35 +65,48 @@ func _ready() -> void:
 
 func _build_body() -> void:
 	_skin_mat = StandardMaterial3D.new()
-	_skin_mat.albedo_color = Color(0.45, 0.55, 0.38) # sickly pale green
-	_skin_mat.roughness = 0.85
+	# Dark, wet, charcoal-brown hide (intro cinematic / key art).
+	_skin_mat.albedo_color = Color(0.17, 0.14, 0.12)
+	_skin_mat.roughness = 0.32
+	_skin_mat.metallic = 0.15
+	_skin_mat.metallic_specular = 0.8
 	var cloth_mat := StandardMaterial3D.new()
-	cloth_mat.albedo_color = Color(0.22, 0.22, 0.20)
-	cloth_mat.roughness = 0.95
+	cloth_mat.albedo_color = Color(0.12, 0.11, 0.1)
+	cloth_mat.roughness = 0.5
 	_eye_mat = StandardMaterial3D.new()
 	_eye_mat.albedo_color = Color(0.1, 0.0, 0.0)
 	_eye_mat.emission_enabled = true
 	_eye_mat.emission = Color(1.0, 0.08, 0.05)
-	_eye_mat.emission_energy_multiplier = 4.0
+	_eye_mat.emission_energy_multiplier = 7.0
 
 	var torso := _box(Vector3(0.62, 0.72, 0.36), Vector3(0, 1.12, 0), cloth_mat)
-	_box(Vector3(0.5, 0.3, 0.38), Vector3(0, 1.3, 0), _skin_mat)
-	var head := _box(Vector3(0.36, 0.36, 0.36), Vector3(0, 1.68, 0), _skin_mat)
-	_box(Vector3(0.08, 0.05, 0.02), Vector3(-0.09, 1.7, 0.19), _eye_mat)
-	_box(Vector3(0.08, 0.05, 0.02), Vector3(0.09, 1.7, 0.19), _eye_mat)
+	_box(Vector3(0.52, 0.3, 0.4), Vector3(0, 1.3, 0.28), _skin_mat)
+	# Hunched: torso pitched forward, head low and thrust ahead (the charge pose).
+	torso.rotation.x = 0.45
+	torso.position = Vector3(0, 1.05, 0.12)
+	var head := _box(Vector3(0.38, 0.36, 0.38), Vector3(0, 1.48, 0.42), _skin_mat)
+	var eye_mesh := SphereMesh.new()
+	eye_mesh.radius = 0.055
+	eye_mesh.height = 0.11
+	for ex in [-0.09, 0.09]:
+		var eye := MeshInstance3D.new()
+		eye.mesh = eye_mesh
+		eye.material_override = _eye_mat
+		eye.position = Vector3(ex, 1.51, 0.62)
+		add_child(eye)
 	_leg_l = _box(Vector3(0.22, 0.72, 0.24), Vector3(-0.17, 0.38, 0), cloth_mat)
 	_leg_r = _box(Vector3(0.22, 0.72, 0.24), Vector3(0.17, 0.38, 0), cloth_mat)
-	_arm_l = _box(Vector3(0.16, 0.62, 0.18), Vector3(-0.42, 1.15, 0.1), _skin_mat)
-	_arm_r = _box(Vector3(0.16, 0.62, 0.18), Vector3(0.42, 1.15, 0.1), _skin_mat)
+	_arm_l = _box(Vector3(0.16, 0.62, 0.18), Vector3(-0.42, 1.2, 0.3), _skin_mat)
+	_arm_r = _box(Vector3(0.16, 0.62, 0.18), Vector3(0.42, 1.2, 0.3), _skin_mat)
 	_arm_l.rotation.x = -1.2
 	_arm_r.rotation.x = -1.2
 	# Collision capsule.
 	var col := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.42
-	shape.height = 1.9
+	shape.height = 1.75
 	col.shape = shape
-	col.position = Vector3(0, 0.95, 0)
+	col.position = Vector3(0, 0.875, 0.1)
 	add_child(col)
 
 func _box(size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
@@ -129,7 +142,7 @@ func mutate() -> void:
 	max_hp += 30.0
 	hp += 30.0
 	scale *= 1.12
-	_skin_mat.albedo_color = Color(0.6, 0.3, 0.25)
+	_skin_mat.albedo_color = Color(0.36, 0.09, 0.07)  # raw red flesh
 	_eye_mat.emission_energy_multiplier = 7.0
 
 func die() -> void:
